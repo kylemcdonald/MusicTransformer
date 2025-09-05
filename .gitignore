@@ -1,0 +1,18 @@
+# Generated output files (thousands of MIDI files)
+output/
+
+# Model checkpoints and saved models
+checkpoint/
+exported_model/
+saved_model/
+
+# Soundfonts (large audio files)
+soundfonts/
+
+# Large data files
+metadata.csv
+review_data.json
+
+.DS_Store
+*.mid
+utils
