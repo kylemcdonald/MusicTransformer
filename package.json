@@ -1,0 +1,19 @@
+{
+  "name": "music-transformer-webgpu",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "export:model": "uv run --python 3.10 --with 'tensorflow==2.19.0' python scripts/export-manual-model.py"
+  },
+  "dependencies": {
+    "@tonejs/piano": "^0.2.1",
+    "lucide": "^1.16.0",
+    "tone": "^14.9.17"
+  },
+  "devDependencies": {
+    "vite": "^8.0.13"
+  }
+}

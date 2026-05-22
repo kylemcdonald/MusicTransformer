@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Transformer</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Music Transformer</h1>
+          <p id="status">Ready</p>
+        </div>
+        <div class="controls" aria-label="Transport controls">
+          <select id="synth-select" aria-label="Synth sound">
+            <option value="synth">Synth</option>
+            <option value="piano">Piano</option>
+          </select>
+          <button id="record" class="record-button icon-text-button" type="button" aria-pressed="false">
+            <i data-lucide="circle"></i>
+            <span>Record</span>
+          </button>
+          <button id="generate" class="primary-button" type="button">Generate</button>
+          <button id="regenerate" class="secondary-button text-button" type="button" disabled>Regenerate from here</button>
+          <select id="previous-runs" aria-label="Previous regenerated runs" disabled>
+            <option value="">No previous runs</option>
+          </select>
+          <button id="stop" class="icon-button" type="button" disabled aria-label="Stop" title="Stop">
+            <i data-lucide="square"></i>
+          </button>
+          <button id="play" class="icon-button" type="button" disabled aria-label="Play" title="Play">
+            <i data-lucide="play"></i>
+          </button>
+          <button id="download" class="icon-button download-button" type="button" disabled aria-label="Download MIDI" title="Download MIDI">
+            <i data-lucide="download"></i>
+          </button>
+        </div>
+      </header>
+
+      <section class="roll-panel" aria-label="Piano roll">
+        <canvas id="piano-roll"></canvas>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

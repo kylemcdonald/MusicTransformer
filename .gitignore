@@ -1,6 +1,12 @@
 # Generated output files (thousands of MIDI files)
 output/
 
+# Browser build and generated browser model assets
+dist/
+node_modules/
+public/model/
+public/manual-model/
+
 # Model checkpoints and saved models
 checkpoint/
 exported_model/
