@@ -1,0 +1,1491 @@
+{
+  "config": {
+    "eosId": 1,
+    "filterSize": 2048,
+    "headSize": 64,
+    "hiddenSize": 512,
+    "numHeads": 8,
+    "numLayers": 16,
+    "vocabSize": 310
+  },
+  "dtype": "float16",
+  "format": "music-transformer-manual-v1",
+  "tensors": {
+    "embedding": {
+      "bytes": 317440,
+      "offset": 0,
+      "shape": [
+        310,
+        512
+      ]
+    },
+    "embedding_t": {
+      "bytes": 317440,
+      "offset": 101130240,
+      "shape": [
+        512,
+        310
+      ]
+    },
+    "final_ln_bias": {
+      "bytes": 1024,
+      "offset": 101129216,
+      "shape": [
+        512
+      ]
+    },
+    "final_ln_scale": {
+      "bytes": 1024,
+      "offset": 101128192,
+      "shape": [
+        512
+      ]
+    },
+    "layers.0.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 318464,
+      "shape": [
+        512
+      ]
+    },
+    "layers.0.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 317440,
+      "shape": [
+        512
+      ]
+    },
+    "layers.0.b1": {
+      "bytes": 4096,
+      "offset": 4515840,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.0.b2": {
+      "bytes": 1024,
+      "offset": 6617088,
+      "shape": [
+        512
+      ]
+    },
+    "layers.0.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 2417664,
+      "shape": [
+        512
+      ]
+    },
+    "layers.0.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 2416640,
+      "shape": [
+        512
+      ]
+    },
+    "layers.0.w1": {
+      "bytes": 2097152,
+      "offset": 2418688,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.0.w2": {
+      "bytes": 2097152,
+      "offset": 4519936,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.0.wk": {
+      "bytes": 524288,
+      "offset": 843776,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.0.wo": {
+      "bytes": 524288,
+      "offset": 1892352,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.0.wq": {
+      "bytes": 524288,
+      "offset": 319488,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.0.wv": {
+      "bytes": 524288,
+      "offset": 1368064,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.1.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 6619136,
+      "shape": [
+        512
+      ]
+    },
+    "layers.1.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 6618112,
+      "shape": [
+        512
+      ]
+    },
+    "layers.1.b1": {
+      "bytes": 4096,
+      "offset": 10816512,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.1.b2": {
+      "bytes": 1024,
+      "offset": 12917760,
+      "shape": [
+        512
+      ]
+    },
+    "layers.1.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 8718336,
+      "shape": [
+        512
+      ]
+    },
+    "layers.1.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 8717312,
+      "shape": [
+        512
+      ]
+    },
+    "layers.1.w1": {
+      "bytes": 2097152,
+      "offset": 8719360,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.1.w2": {
+      "bytes": 2097152,
+      "offset": 10820608,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.1.wk": {
+      "bytes": 524288,
+      "offset": 7144448,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.1.wo": {
+      "bytes": 524288,
+      "offset": 8193024,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.1.wq": {
+      "bytes": 524288,
+      "offset": 6620160,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.1.wv": {
+      "bytes": 524288,
+      "offset": 7668736,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.10.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 63325184,
+      "shape": [
+        512
+      ]
+    },
+    "layers.10.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 63324160,
+      "shape": [
+        512
+      ]
+    },
+    "layers.10.b1": {
+      "bytes": 4096,
+      "offset": 67522560,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.10.b2": {
+      "bytes": 1024,
+      "offset": 69623808,
+      "shape": [
+        512
+      ]
+    },
+    "layers.10.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 65424384,
+      "shape": [
+        512
+      ]
+    },
+    "layers.10.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 65423360,
+      "shape": [
+        512
+      ]
+    },
+    "layers.10.w1": {
+      "bytes": 2097152,
+      "offset": 65425408,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.10.w2": {
+      "bytes": 2097152,
+      "offset": 67526656,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.10.wk": {
+      "bytes": 524288,
+      "offset": 63850496,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.10.wo": {
+      "bytes": 524288,
+      "offset": 64899072,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.10.wq": {
+      "bytes": 524288,
+      "offset": 63326208,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.10.wv": {
+      "bytes": 524288,
+      "offset": 64374784,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.11.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 69625856,
+      "shape": [
+        512
+      ]
+    },
+    "layers.11.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 69624832,
+      "shape": [
+        512
+      ]
+    },
+    "layers.11.b1": {
+      "bytes": 4096,
+      "offset": 73823232,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.11.b2": {
+      "bytes": 1024,
+      "offset": 75924480,
+      "shape": [
+        512
+      ]
+    },
+    "layers.11.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 71725056,
+      "shape": [
+        512
+      ]
+    },
+    "layers.11.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 71724032,
+      "shape": [
+        512
+      ]
+    },
+    "layers.11.w1": {
+      "bytes": 2097152,
+      "offset": 71726080,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.11.w2": {
+      "bytes": 2097152,
+      "offset": 73827328,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.11.wk": {
+      "bytes": 524288,
+      "offset": 70151168,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.11.wo": {
+      "bytes": 524288,
+      "offset": 71199744,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.11.wq": {
+      "bytes": 524288,
+      "offset": 69626880,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.11.wv": {
+      "bytes": 524288,
+      "offset": 70675456,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.12.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 75926528,
+      "shape": [
+        512
+      ]
+    },
+    "layers.12.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 75925504,
+      "shape": [
+        512
+      ]
+    },
+    "layers.12.b1": {
+      "bytes": 4096,
+      "offset": 80123904,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.12.b2": {
+      "bytes": 1024,
+      "offset": 82225152,
+      "shape": [
+        512
+      ]
+    },
+    "layers.12.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 78025728,
+      "shape": [
+        512
+      ]
+    },
+    "layers.12.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 78024704,
+      "shape": [
+        512
+      ]
+    },
+    "layers.12.w1": {
+      "bytes": 2097152,
+      "offset": 78026752,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.12.w2": {
+      "bytes": 2097152,
+      "offset": 80128000,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.12.wk": {
+      "bytes": 524288,
+      "offset": 76451840,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.12.wo": {
+      "bytes": 524288,
+      "offset": 77500416,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.12.wq": {
+      "bytes": 524288,
+      "offset": 75927552,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.12.wv": {
+      "bytes": 524288,
+      "offset": 76976128,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.13.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 82227200,
+      "shape": [
+        512
+      ]
+    },
+    "layers.13.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 82226176,
+      "shape": [
+        512
+      ]
+    },
+    "layers.13.b1": {
+      "bytes": 4096,
+      "offset": 86424576,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.13.b2": {
+      "bytes": 1024,
+      "offset": 88525824,
+      "shape": [
+        512
+      ]
+    },
+    "layers.13.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 84326400,
+      "shape": [
+        512
+      ]
+    },
+    "layers.13.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 84325376,
+      "shape": [
+        512
+      ]
+    },
+    "layers.13.w1": {
+      "bytes": 2097152,
+      "offset": 84327424,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.13.w2": {
+      "bytes": 2097152,
+      "offset": 86428672,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.13.wk": {
+      "bytes": 524288,
+      "offset": 82752512,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.13.wo": {
+      "bytes": 524288,
+      "offset": 83801088,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.13.wq": {
+      "bytes": 524288,
+      "offset": 82228224,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.13.wv": {
+      "bytes": 524288,
+      "offset": 83276800,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.14.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 88527872,
+      "shape": [
+        512
+      ]
+    },
+    "layers.14.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 88526848,
+      "shape": [
+        512
+      ]
+    },
+    "layers.14.b1": {
+      "bytes": 4096,
+      "offset": 92725248,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.14.b2": {
+      "bytes": 1024,
+      "offset": 94826496,
+      "shape": [
+        512
+      ]
+    },
+    "layers.14.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 90627072,
+      "shape": [
+        512
+      ]
+    },
+    "layers.14.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 90626048,
+      "shape": [
+        512
+      ]
+    },
+    "layers.14.w1": {
+      "bytes": 2097152,
+      "offset": 90628096,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.14.w2": {
+      "bytes": 2097152,
+      "offset": 92729344,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.14.wk": {
+      "bytes": 524288,
+      "offset": 89053184,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.14.wo": {
+      "bytes": 524288,
+      "offset": 90101760,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.14.wq": {
+      "bytes": 524288,
+      "offset": 88528896,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.14.wv": {
+      "bytes": 524288,
+      "offset": 89577472,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.15.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 94828544,
+      "shape": [
+        512
+      ]
+    },
+    "layers.15.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 94827520,
+      "shape": [
+        512
+      ]
+    },
+    "layers.15.b1": {
+      "bytes": 4096,
+      "offset": 99025920,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.15.b2": {
+      "bytes": 1024,
+      "offset": 101127168,
+      "shape": [
+        512
+      ]
+    },
+    "layers.15.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 96927744,
+      "shape": [
+        512
+      ]
+    },
+    "layers.15.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 96926720,
+      "shape": [
+        512
+      ]
+    },
+    "layers.15.w1": {
+      "bytes": 2097152,
+      "offset": 96928768,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.15.w2": {
+      "bytes": 2097152,
+      "offset": 99030016,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.15.wk": {
+      "bytes": 524288,
+      "offset": 95353856,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.15.wo": {
+      "bytes": 524288,
+      "offset": 96402432,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.15.wq": {
+      "bytes": 524288,
+      "offset": 94829568,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.15.wv": {
+      "bytes": 524288,
+      "offset": 95878144,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.2.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 12919808,
+      "shape": [
+        512
+      ]
+    },
+    "layers.2.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 12918784,
+      "shape": [
+        512
+      ]
+    },
+    "layers.2.b1": {
+      "bytes": 4096,
+      "offset": 17117184,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.2.b2": {
+      "bytes": 1024,
+      "offset": 19218432,
+      "shape": [
+        512
+      ]
+    },
+    "layers.2.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 15019008,
+      "shape": [
+        512
+      ]
+    },
+    "layers.2.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 15017984,
+      "shape": [
+        512
+      ]
+    },
+    "layers.2.w1": {
+      "bytes": 2097152,
+      "offset": 15020032,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.2.w2": {
+      "bytes": 2097152,
+      "offset": 17121280,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.2.wk": {
+      "bytes": 524288,
+      "offset": 13445120,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.2.wo": {
+      "bytes": 524288,
+      "offset": 14493696,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.2.wq": {
+      "bytes": 524288,
+      "offset": 12920832,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.2.wv": {
+      "bytes": 524288,
+      "offset": 13969408,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.3.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 19220480,
+      "shape": [
+        512
+      ]
+    },
+    "layers.3.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 19219456,
+      "shape": [
+        512
+      ]
+    },
+    "layers.3.b1": {
+      "bytes": 4096,
+      "offset": 23417856,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.3.b2": {
+      "bytes": 1024,
+      "offset": 25519104,
+      "shape": [
+        512
+      ]
+    },
+    "layers.3.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 21319680,
+      "shape": [
+        512
+      ]
+    },
+    "layers.3.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 21318656,
+      "shape": [
+        512
+      ]
+    },
+    "layers.3.w1": {
+      "bytes": 2097152,
+      "offset": 21320704,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.3.w2": {
+      "bytes": 2097152,
+      "offset": 23421952,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.3.wk": {
+      "bytes": 524288,
+      "offset": 19745792,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.3.wo": {
+      "bytes": 524288,
+      "offset": 20794368,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.3.wq": {
+      "bytes": 524288,
+      "offset": 19221504,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.3.wv": {
+      "bytes": 524288,
+      "offset": 20270080,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.4.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 25521152,
+      "shape": [
+        512
+      ]
+    },
+    "layers.4.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 25520128,
+      "shape": [
+        512
+      ]
+    },
+    "layers.4.b1": {
+      "bytes": 4096,
+      "offset": 29718528,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.4.b2": {
+      "bytes": 1024,
+      "offset": 31819776,
+      "shape": [
+        512
+      ]
+    },
+    "layers.4.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 27620352,
+      "shape": [
+        512
+      ]
+    },
+    "layers.4.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 27619328,
+      "shape": [
+        512
+      ]
+    },
+    "layers.4.w1": {
+      "bytes": 2097152,
+      "offset": 27621376,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.4.w2": {
+      "bytes": 2097152,
+      "offset": 29722624,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.4.wk": {
+      "bytes": 524288,
+      "offset": 26046464,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.4.wo": {
+      "bytes": 524288,
+      "offset": 27095040,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.4.wq": {
+      "bytes": 524288,
+      "offset": 25522176,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.4.wv": {
+      "bytes": 524288,
+      "offset": 26570752,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.5.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 31821824,
+      "shape": [
+        512
+      ]
+    },
+    "layers.5.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 31820800,
+      "shape": [
+        512
+      ]
+    },
+    "layers.5.b1": {
+      "bytes": 4096,
+      "offset": 36019200,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.5.b2": {
+      "bytes": 1024,
+      "offset": 38120448,
+      "shape": [
+        512
+      ]
+    },
+    "layers.5.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 33921024,
+      "shape": [
+        512
+      ]
+    },
+    "layers.5.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 33920000,
+      "shape": [
+        512
+      ]
+    },
+    "layers.5.w1": {
+      "bytes": 2097152,
+      "offset": 33922048,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.5.w2": {
+      "bytes": 2097152,
+      "offset": 36023296,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.5.wk": {
+      "bytes": 524288,
+      "offset": 32347136,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.5.wo": {
+      "bytes": 524288,
+      "offset": 33395712,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.5.wq": {
+      "bytes": 524288,
+      "offset": 31822848,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.5.wv": {
+      "bytes": 524288,
+      "offset": 32871424,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.6.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 38122496,
+      "shape": [
+        512
+      ]
+    },
+    "layers.6.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 38121472,
+      "shape": [
+        512
+      ]
+    },
+    "layers.6.b1": {
+      "bytes": 4096,
+      "offset": 42319872,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.6.b2": {
+      "bytes": 1024,
+      "offset": 44421120,
+      "shape": [
+        512
+      ]
+    },
+    "layers.6.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 40221696,
+      "shape": [
+        512
+      ]
+    },
+    "layers.6.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 40220672,
+      "shape": [
+        512
+      ]
+    },
+    "layers.6.w1": {
+      "bytes": 2097152,
+      "offset": 40222720,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.6.w2": {
+      "bytes": 2097152,
+      "offset": 42323968,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.6.wk": {
+      "bytes": 524288,
+      "offset": 38647808,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.6.wo": {
+      "bytes": 524288,
+      "offset": 39696384,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.6.wq": {
+      "bytes": 524288,
+      "offset": 38123520,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.6.wv": {
+      "bytes": 524288,
+      "offset": 39172096,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.7.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 44423168,
+      "shape": [
+        512
+      ]
+    },
+    "layers.7.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 44422144,
+      "shape": [
+        512
+      ]
+    },
+    "layers.7.b1": {
+      "bytes": 4096,
+      "offset": 48620544,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.7.b2": {
+      "bytes": 1024,
+      "offset": 50721792,
+      "shape": [
+        512
+      ]
+    },
+    "layers.7.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 46522368,
+      "shape": [
+        512
+      ]
+    },
+    "layers.7.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 46521344,
+      "shape": [
+        512
+      ]
+    },
+    "layers.7.w1": {
+      "bytes": 2097152,
+      "offset": 46523392,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.7.w2": {
+      "bytes": 2097152,
+      "offset": 48624640,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.7.wk": {
+      "bytes": 524288,
+      "offset": 44948480,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.7.wo": {
+      "bytes": 524288,
+      "offset": 45997056,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.7.wq": {
+      "bytes": 524288,
+      "offset": 44424192,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.7.wv": {
+      "bytes": 524288,
+      "offset": 45472768,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.8.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 50723840,
+      "shape": [
+        512
+      ]
+    },
+    "layers.8.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 50722816,
+      "shape": [
+        512
+      ]
+    },
+    "layers.8.b1": {
+      "bytes": 4096,
+      "offset": 54921216,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.8.b2": {
+      "bytes": 1024,
+      "offset": 57022464,
+      "shape": [
+        512
+      ]
+    },
+    "layers.8.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 52823040,
+      "shape": [
+        512
+      ]
+    },
+    "layers.8.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 52822016,
+      "shape": [
+        512
+      ]
+    },
+    "layers.8.w1": {
+      "bytes": 2097152,
+      "offset": 52824064,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.8.w2": {
+      "bytes": 2097152,
+      "offset": 54925312,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.8.wk": {
+      "bytes": 524288,
+      "offset": 51249152,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.8.wo": {
+      "bytes": 524288,
+      "offset": 52297728,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.8.wq": {
+      "bytes": 524288,
+      "offset": 50724864,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.8.wv": {
+      "bytes": 524288,
+      "offset": 51773440,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.9.attn_ln_bias": {
+      "bytes": 1024,
+      "offset": 57024512,
+      "shape": [
+        512
+      ]
+    },
+    "layers.9.attn_ln_scale": {
+      "bytes": 1024,
+      "offset": 57023488,
+      "shape": [
+        512
+      ]
+    },
+    "layers.9.b1": {
+      "bytes": 4096,
+      "offset": 61221888,
+      "shape": [
+        2048
+      ]
+    },
+    "layers.9.b2": {
+      "bytes": 1024,
+      "offset": 63323136,
+      "shape": [
+        512
+      ]
+    },
+    "layers.9.ffn_ln_bias": {
+      "bytes": 1024,
+      "offset": 59123712,
+      "shape": [
+        512
+      ]
+    },
+    "layers.9.ffn_ln_scale": {
+      "bytes": 1024,
+      "offset": 59122688,
+      "shape": [
+        512
+      ]
+    },
+    "layers.9.w1": {
+      "bytes": 2097152,
+      "offset": 59124736,
+      "shape": [
+        512,
+        2048
+      ]
+    },
+    "layers.9.w2": {
+      "bytes": 2097152,
+      "offset": 61225984,
+      "shape": [
+        2048,
+        512
+      ]
+    },
+    "layers.9.wk": {
+      "bytes": 524288,
+      "offset": 57549824,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.9.wo": {
+      "bytes": 524288,
+      "offset": 58598400,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.9.wq": {
+      "bytes": 524288,
+      "offset": 57025536,
+      "shape": [
+        512,
+        512
+      ]
+    },
+    "layers.9.wv": {
+      "bytes": 524288,
+      "offset": 58074112,
+      "shape": [
+        512,
+        512
+      ]
+    }
+  },
+  "weightShards": [
+    "weights-000.bin",
+    "weights-001.bin",
+    "weights-002.bin",
+    "weights-003.bin"
+  ]
+}

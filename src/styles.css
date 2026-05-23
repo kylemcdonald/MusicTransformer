@@ -82,6 +82,16 @@ h1 {
   letter-spacing: 0;
 }
 
+h1 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1 a:focus-visible {
+  outline: 2px solid #47bda8;
+  outline-offset: 4px;
+}
+
 p {
   margin: 7px 0 0;
   color: #aab0ba;
@@ -139,6 +149,10 @@ p {
   color: #171006;
 }
 
+.file-input {
+  display: none;
+}
+
 .text-button {
   min-width: 188px;
 }
@@ -148,6 +162,19 @@ p {
   position: relative;
   overflow: hidden;
   padding: 0;
+}
+
+.roll-panel.is-dragover::after {
+  content: "Drop MIDI";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(16, 18, 23, 0.72);
+  color: #f4f0e8;
+  font-size: 22px;
+  font-weight: 800;
+  pointer-events: none;
 }
 
 #piano-roll {

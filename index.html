@@ -9,7 +9,7 @@
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <h1>Music Transformer</h1>
+          <h1><a href="https://github.com/kylemcdonald/MusicTransformer">Music Transformer</a></h1>
           <p id="status">Ready</p>
         </div>
         <div class="controls" aria-label="Transport controls">
@@ -35,6 +35,10 @@
           <button id="download" class="icon-button download-button" type="button" disabled aria-label="Download MIDI" title="Download MIDI">
             <i data-lucide="download"></i>
           </button>
+          <button id="upload-midi" class="icon-button" type="button" aria-label="Upload MIDI" title="Upload MIDI">
+            <i data-lucide="upload"></i>
+          </button>
+          <input id="midi-file" class="file-input" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" />
         </div>
       </header>
 

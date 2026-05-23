@@ -1,5 +1,6 @@
-const MANIFEST_URL = '/manual-model/manifest.json';
-const WEIGHTS_URL = '/manual-model/weights.bin';
+const PUBLIC_BASE_URL = import.meta.env.BASE_URL || '/';
+const MANIFEST_URL = new URL('manual-model/manifest.json', new URL(PUBLIC_BASE_URL, window.location.href)).href;
+const WEIGHTS_URL = new URL('manual-model/weights.bin', new URL(PUBLIC_BASE_URL, window.location.href)).href;
 
 const CONTEXT_LENGTH = 1024;
 const DEFAULT_MAX_TOKENS = 8192;
@@ -12,10 +13,26 @@ const EOS_ID = 1;
 const RESERVED_ID = 2;
 
 const FLOAT_BYTES = 4;
+const HALF_BYTES = 2;
 
 let modelPromise = null;
+let lastBackendName = `manual WebGPU f32 weights, ${CONTEXT_LENGTH}-token KV context`;
 
-const embedShader = /* wgsl */ `
+function weightElementType(storageType) {
+  return storageType === 'float16' ? 'f16' : 'f32';
+}
+
+function weightShaderHeader(storageType) {
+  return storageType === 'float16' ? 'enable f16;\n' : '';
+}
+
+function weightRead(expression, storageType) {
+  return storageType === 'float16' ? `f32(${expression})` : expression;
+}
+
+function createEmbedShader(storageType) {
+  const weightType = weightElementType(storageType);
+  return /* wgsl */ `${weightShaderHeader(storageType)}
 const HIDDEN: u32 = 512u;
 const HALF_HIDDEN: u32 = 256u;
 const VOCAB: u32 = 310u;
@@ -33,7 +50,7 @@ struct StepParams {
   pad2: u32,
 };
 
-@group(0) @binding(0) var<storage, read> embedding: array<f32>;
+@group(0) @binding(0) var<storage, read> embedding: array<${weightType}>;
 @group(0) @binding(1) var<storage, read_write> output: array<f32>;
 @group(0) @binding(2) var<uniform> params: StepParams;
 
@@ -56,20 +73,23 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
   var value = 0.0;
   if (params.token != 0u && params.token < VOCAB) {
-    value = embedding[params.token * HIDDEN + i] * EMBEDDING_SCALE;
+    value = ${weightRead('embedding[params.token * HIDDEN + i]', storageType)} * EMBEDDING_SCALE;
   }
 
   output[i] = value + timing_signal(i, params.position);
 }
 `;
+}
 
-const layerNormShader = /* wgsl */ `
+function createLayerNormShader(storageType) {
+  const weightType = weightElementType(storageType);
+  return /* wgsl */ `${weightShaderHeader(storageType)}
 const HIDDEN: u32 = 512u;
 const EPSILON: f32 = 0.000001;
 
 @group(0) @binding(0) var<storage, read> input_values: array<f32>;
-@group(0) @binding(1) var<storage, read> scale: array<f32>;
-@group(0) @binding(2) var<storage, read> bias: array<f32>;
+@group(0) @binding(1) var<storage, read> scale: array<${weightType}>;
+@group(0) @binding(2) var<storage, read> bias: array<${weightType}>;
 @group(0) @binding(3) var<storage, read_write> output_values: array<f32>;
 
 @compute @workgroup_size(1)
@@ -88,12 +108,15 @@ fn main() {
   let inv_std = inverseSqrt(variance / f32(HIDDEN) + EPSILON);
 
   for (var i = 0u; i < HIDDEN; i = i + 1u) {
-    output_values[i] = (input_values[i] - mean) * inv_std * scale[i] + bias[i];
+    output_values[i] = (input_values[i] - mean) * inv_std * ${weightRead('scale[i]', storageType)} + ${weightRead('bias[i]', storageType)};
   }
 }
 `;
+}
 
-const matVecShader = /* wgsl */ `
+function createMatVecShader(storageType) {
+  const weightType = weightElementType(storageType);
+  return /* wgsl */ `${weightShaderHeader(storageType)}
 struct MatVecParams {
   input_size: u32,
   output_size: u32,
@@ -102,8 +125,8 @@ struct MatVecParams {
 };
 
 @group(0) @binding(0) var<storage, read> input_values: array<f32>;
-@group(0) @binding(1) var<storage, read> weights: array<f32>;
-@group(0) @binding(2) var<storage, read> bias: array<f32>;
+@group(0) @binding(1) var<storage, read> weights: array<${weightType}>;
+@group(0) @binding(2) var<storage, read> bias: array<${weightType}>;
 @group(0) @binding(3) var<storage, read_write> output_values: array<f32>;
 @group(0) @binding(4) var<uniform> params: MatVecParams;
 
@@ -114,9 +137,9 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     return;
   }
 
-  var sum = bias[out_index];
+  var sum = ${weightRead('bias[out_index]', storageType)};
   for (var i = 0u; i < params.input_size; i = i + 1u) {
-    sum = sum + input_values[i] * weights[i * params.output_size + out_index];
+    sum = sum + input_values[i] * ${weightRead('weights[i * params.output_size + out_index]', storageType)};
   }
 
   if (params.activation == 1u && sum < 0.0) {
@@ -126,6 +149,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   output_values[out_index] = sum;
 }
 `;
+}
 
 const addShader = /* wgsl */ `
 const HIDDEN: u32 = 512u;
@@ -304,6 +328,13 @@ function createZeroBuffer(device, length, label) {
   );
 }
 
+function createZeroWeightBuffer(device, length, storageType, label) {
+  const values = storageType === 'float16'
+    ? new Uint16Array(length)
+    : new Float32Array(length);
+  return createAndWriteBuffer(device, values, storageUsage(), label);
+}
+
 function createUniformBuffer(device, values, label) {
   const buffer = createBuffer(device, values.byteLength, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, label);
   device.queue.writeBuffer(buffer, 0, values);
@@ -312,6 +343,46 @@ function createUniformBuffer(device, values, label) {
 
 function alignTo(value, alignment) {
   return Math.ceil(value / alignment) * alignment;
+}
+
+function tensorElementCount(info, dtype) {
+  const bytesPerElement = dtype === 'float16' ? HALF_BYTES : FLOAT_BYTES;
+  return info.bytes / bytesPerElement;
+}
+
+function halfToFloat(bits) {
+  const sign = bits & 0x8000 ? -1 : 1;
+  const exponent = (bits >> 10) & 0x1f;
+  const fraction = bits & 0x03ff;
+
+  if (exponent === 0) {
+    return sign * Math.pow(2, -14) * (fraction / 1024);
+  }
+  if (exponent === 0x1f) {
+    return fraction ? NaN : sign * Infinity;
+  }
+  return sign * Math.pow(2, exponent - 15) * (1 + fraction / 1024);
+}
+
+function float16BufferToFloat32Array(buffer, offset, count) {
+  const input = new Uint16Array(buffer, offset, count);
+  const output = new Float32Array(count);
+  for (let i = 0; i < count; i += 1) {
+    output[i] = halfToFloat(input[i]);
+  }
+  return output;
+}
+
+function tensorUploadData(weightsBuffer, info, sourceDtype, storageType) {
+  if (sourceDtype === 'float16' && storageType === 'float32') {
+    return float16BufferToFloat32Array(
+      weightsBuffer,
+      info.offset,
+      tensorElementCount(info, sourceDtype)
+    );
+  }
+
+  return new Uint8Array(weightsBuffer, info.offset, info.bytes);
 }
 
 function dispatch1d(pass, pipeline, bindGroup, count, workgroupSize = 64) {
@@ -397,19 +468,64 @@ async function fetchArrayBufferWithProgress(url, onProgress) {
   return output.buffer;
 }
 
+function manifestWeightBytes(manifest) {
+  return Object.values(manifest.tensors || {})
+    .reduce((max, tensor) => Math.max(max, tensor.offset + tensor.bytes), 0);
+}
+
+async function fetchWeightsBuffer(manifest, onProgress) {
+  const baseUrl = new URL(MANIFEST_URL, window.location.href);
+  const shards = manifest.weightShards || [manifest.weights || WEIGHTS_URL];
+  if (shards.length === 1) {
+    return fetchArrayBufferWithProgress(
+      new URL(shards[0], baseUrl).toString(),
+      onProgress
+    );
+  }
+
+  const totalBytes = manifestWeightBytes(manifest);
+  const buffers = [];
+  let receivedBytes = 0;
+
+  for (let index = 0; index < shards.length; index += 1) {
+    const shardUrl = new URL(shards[index], baseUrl).toString();
+    const buffer = await fetchArrayBufferWithProgress(shardUrl, (fraction) => {
+      if (totalBytes) {
+        const estimatedShardBytes = totalBytes / shards.length;
+        onProgress?.(Math.min((receivedBytes + fraction * estimatedShardBytes) / totalBytes, 1));
+      } else {
+        onProgress?.((index + fraction) / shards.length);
+      }
+    });
+    buffers.push(new Uint8Array(buffer));
+    receivedBytes += buffer.byteLength;
+    onProgress?.(totalBytes ? Math.min(receivedBytes / totalBytes, 1) : (index + 1) / shards.length);
+  }
+
+  const weights = new Uint8Array(receivedBytes);
+  let offset = 0;
+  for (const buffer of buffers) {
+    weights.set(buffer, offset);
+    offset += buffer.byteLength;
+  }
+  return weights.buffer;
+}
+
 export class ManualMusicTransformer {
-  constructor(device, manifest, weightsBuffer, onProgress) {
+  constructor(device, manifest, weightsBuffer, onProgress, { weightStorageType = 'float32' } = {}) {
     this.device = device;
     this.manifest = manifest;
     this.config = manifest.config;
     this.contextLength = CONTEXT_LENGTH;
     this.weightsBuffer = weightsBuffer;
     this.onProgress = onProgress;
+    this.sourceDtype = manifest.dtype || 'float32';
+    this.weightStorageType = weightStorageType;
 
     this.pipelines = {
-      embed: createPipeline(device, embedShader, 'embed'),
-      layerNorm: createPipeline(device, layerNormShader, 'layer-norm'),
-      matVec: createPipeline(device, matVecShader, 'mat-vec'),
+      embed: createPipeline(device, createEmbedShader(weightStorageType), 'embed'),
+      layerNorm: createPipeline(device, createLayerNormShader(weightStorageType), 'layer-norm'),
+      matVec: createPipeline(device, createMatVecShader(weightStorageType), 'mat-vec'),
       add: createPipeline(device, addShader, 'add'),
       cache: createPipeline(device, cacheShader, 'cache'),
       attentionScores: createPipeline(device, attentionScoresShader, 'attention-scores'),
@@ -431,8 +547,8 @@ export class ManualMusicTransformer {
 
     const tensorEntries = Object.entries(this.manifest.tensors);
     tensorEntries.forEach(([name, info], index) => {
-      const view = new Uint8Array(this.weightsBuffer, info.offset, info.bytes);
-      this.weights.set(name, createAndWriteBuffer(this.device, view, storageUsage(), name));
+      const data = tensorUploadData(this.weightsBuffer, info, this.sourceDtype, this.weightStorageType);
+      this.weights.set(name, createAndWriteBuffer(this.device, data, storageUsage(), name));
       this.onProgress?.(0.75 + ((index + 1) / tensorEntries.length) * 0.25);
     });
     this.weightsBuffer = null;
@@ -454,8 +570,8 @@ export class ManualMusicTransformer {
       'logits-readback'
     );
 
-    this.zeroHidden = createZeroBuffer(device, config.hiddenSize, 'zero-hidden');
-    this.zeroVocab = createZeroBuffer(device, config.vocabSize, 'zero-vocab');
+    this.zeroHidden = createZeroWeightBuffer(device, config.hiddenSize, this.weightStorageType, 'zero-hidden');
+    this.zeroVocab = createZeroWeightBuffer(device, config.vocabSize, this.weightStorageType, 'zero-vocab');
 
     this.stepParams = createUniformBuffer(device, new Uint32Array(8), 'step-params');
     this.mat512x512 = createUniformBuffer(device, new Uint32Array([512, 512, 0, 0]), 'mat-512-512');
@@ -633,10 +749,18 @@ export class ManualMusicTransformer {
     let previousToken = PAD_ID;
     let position = 0;
 
-    for (const seedToken of seedTokens) {
+    for (let seedIndex = 0; seedIndex < seedTokens.length; seedIndex += 1) {
+      const seedToken = seedTokens[seedIndex];
       throwIfAborted(signal);
       await this.generateToken(previousToken, position);
       throwIfAborted(signal);
+      options.onSeedProgress?.({
+        completed: seedIndex + 1,
+        total: seedTokens.length,
+        processedToken: previousToken,
+        nextToken: seedToken,
+        position
+      });
       previousToken = seedToken;
       position += 1;
     }
@@ -667,19 +791,30 @@ export async function loadMusicTransformer(onProgress) {
       if (!adapter) {
         throw new Error('No WebGPU adapter is available.');
       }
-      const device = await adapter.requestDevice();
       const manifest = await fetch(MANIFEST_URL).then((response) => {
         if (!response.ok) {
           throw new Error(`Failed to load ${MANIFEST_URL}: ${response.status}`);
         }
         return response.json();
       });
+      const useF16Weights = manifest.dtype === 'float16' && adapter.features.has('shader-f16');
+      const device = await adapter.requestDevice({
+        requiredFeatures: useF16Weights ? ['shader-f16'] : []
+      });
       onProgress?.(0.05);
-      const weightsBuffer = await fetchArrayBufferWithProgress(
-        WEIGHTS_URL,
+      const weightsBuffer = await fetchWeightsBuffer(
+        manifest,
         (fraction) => onProgress?.(0.05 + fraction * 0.70)
       );
-      return new ManualMusicTransformer(device, manifest, weightsBuffer, onProgress);
+      const weightStorageType = useF16Weights ? 'float16' : 'float32';
+      if (manifest.dtype === 'float16' && !useF16Weights) {
+        onProgress?.(0.72);
+      }
+      const model = new ManualMusicTransformer(device, manifest, weightsBuffer, onProgress, {
+        weightStorageType
+      });
+      lastBackendName = `manual WebGPU ${weightStorageType} weights, f32 accumulators, ${CONTEXT_LENGTH}-token KV context`;
+      return model;
     })();
   }
 
@@ -700,5 +835,5 @@ export async function generateTokens(model, prefixTokens, decodeLength) {
 }
 
 export function backendName() {
-  return `manual WebGPU, ${CONTEXT_LENGTH}-token KV context`;
+  return lastBackendName;
 }

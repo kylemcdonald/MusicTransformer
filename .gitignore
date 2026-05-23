@@ -1,24 +1,17 @@
-# Generated output files (thousands of MIDI files)
-output/
-
-# Browser build and generated browser model assets
+# Local build and dependency folders
 dist/
 node_modules/
-public/model/
-public/manual-model/
 
-# Model checkpoints and saved models
+# Obsolete generated model/data artifacts kept out of the frontend repo
+public/model/
 checkpoint/
 exported_model/
+output/
 saved_model/
-
-# Soundfonts (large audio files)
 soundfonts/
 
-# Large data files
+# Local scratch data
 metadata.csv
 review_data.json
-
 .DS_Store
 *.mid
-utils

@@ -1,13 +1,16 @@
 import './styles.css';
 
-import { Circle, CircleDot, createIcons, Download, Pause, Play, RotateCcw, Square } from 'lucide';
+import { Circle, CircleDot, createIcons, Download, Pause, Play, RotateCcw, Square, Upload } from 'lucide';
 
 import { backendName, generateTokenStream, loadMusicTransformer } from './model.js';
 import {
   encodeNotesToPerformanceTokens,
-  PerformanceStreamDecoder
+  PerformanceStreamDecoder,
+  STEPS_PER_SECOND,
+  tokenEvent
 } from './performance_codec.js';
 import { writeMidiBlob } from './midi.js';
+import { readMidiFile } from './midi_import.js';
 import { MidiPlayer } from './player.js';
 import { PianoRoll } from './piano_roll.js';
 
@@ -17,6 +20,7 @@ const PREFIX_TOKENS_PER_FRAME = 256;
 const FIRST_NOTE_LEAD_IN = 1;
 const PAD_SEED_TOKEN = 0;
 const KEYBOARD_NOTE_VELOCITY = 108;
+const CURSOR_JUMP_EPSILON = 0.03;
 
 const KEYBOARD_PITCHES = new Map([
   ['KeyA', 60],
@@ -39,6 +43,8 @@ const KEYBOARD_PITCHES = new Map([
 
 const generateButton = document.querySelector('#generate');
 const recordButton = document.querySelector('#record');
+const uploadMidiButton = document.querySelector('#upload-midi');
+const midiFileInput = document.querySelector('#midi-file');
 const regenerateButton = document.querySelector('#regenerate');
 const stopButton = document.querySelector('#stop');
 const playButton = document.querySelector('#play');
@@ -46,6 +52,7 @@ const downloadButton = document.querySelector('#download');
 const synthSelect = document.querySelector('#synth-select');
 const previousRunsSelect = document.querySelector('#previous-runs');
 const statusText = document.querySelector('#status');
+const rollPanel = document.querySelector('.roll-panel');
 const pianoRoll = new PianoRoll(document.querySelector('#piano-roll'));
 const player = new MidiPlayer();
 
@@ -61,6 +68,7 @@ let userNotes = [];
 let ghostNotes = [];
 let previousRuns = [];
 let renderedNotes = [];
+let selectedNoteIds = new Set();
 let midiUrl = null;
 let generating = false;
 let pendingGeneration = null;
@@ -86,7 +94,7 @@ function setStatus(text) {
 
 function renderLucideIcons() {
   createIcons({
-    icons: { Circle, CircleDot, Download, Pause, Play, RotateCcw, Square }
+    icons: { Circle, CircleDot, Download, Pause, Play, RotateCcw, Square, Upload }
   });
 }
 
@@ -122,8 +130,33 @@ function latestNoteEnd(notes) {
   return notes.reduce((max, note) => Math.max(max, note.end), 0);
 }
 
+function prefixTokenTimes(tokens, maxTime) {
+  const times = [0];
+  let step = 0;
+  for (const token of tokens) {
+    const event = tokenEvent(token, step);
+    if (event.type === 'eos') break;
+    if (event.type === 'time_shift') {
+      step = event.endStep;
+    }
+    times.push(Math.min(maxTime, step / STEPS_PER_SECOND));
+  }
+  return times;
+}
+
 function cloneNotes(notes) {
   return notes.map((note) => ({ ...note }));
+}
+
+function clearSelection() {
+  selectedNoteIds = new Set();
+  pianoRoll.setSelectedNoteIds(selectedNoteIds);
+}
+
+function setSelection(ids) {
+  selectedNoteIds = new Set(ids);
+  pianoRoll.setSelectedNoteIds(selectedNoteIds);
+  updateControls();
 }
 
 function renderPreviousRunOptions() {
@@ -172,34 +205,64 @@ function ghostNotesAfterCursor(notes, cutoff, id) {
     .filter((note) => note.end > note.start);
 }
 
+function versionLabel(id, cutoff, count) {
+  return cutoff > 0
+    ? `Version ${id} @ ${cutoff.toFixed(2)}s (${count} notes)`
+    : `Version ${id} (${count} notes)`;
+}
+
 function savePreviousRun(notes, {
   cutoff = cursorTime,
+  id,
   select = false,
   showGhostTail = false,
   label
 } = {}) {
-  const id = String(previousRunId++);
-  const playable = versionNotes(notes, id);
+  const runId = id || String(previousRunId++);
+  const playable = versionNotes(notes, runId);
   if (!playable.length) return null;
 
   const run = {
-    id,
-    label: label || (cutoff > 0
-      ? `Version ${id} @ ${cutoff.toFixed(2)}s (${playable.length} notes)`
-      : `Version ${id} (${playable.length} notes)`),
+    id: runId,
+    label: label || versionLabel(runId, cutoff, playable.length),
     cursorTime: cutoff,
     notes: playable,
-    ghostNotes: ghostNotesAfterCursor(playable, cutoff, id)
+    ghostNotes: ghostNotesAfterCursor(playable, cutoff, runId)
   };
 
-  previousRuns = [run, ...previousRuns].slice(0, MAX_PREVIOUS_RUNS);
-  if (select) selectedPreviousRunId = id;
+  const existingIndex = previousRuns.findIndex((entry) => entry.id === runId);
+  if (existingIndex >= 0) {
+    previousRuns = previousRuns.map((entry) => (entry.id === runId ? run : entry));
+  } else {
+    previousRuns = [run, ...previousRuns].slice(0, MAX_PREVIOUS_RUNS);
+  }
+
+  if (select) selectedPreviousRunId = runId;
   if (showGhostTail) ghostNotes = cloneNotes(run.ghostNotes);
   renderPreviousRunOptions();
   return run;
 }
 
+function activeVersion() {
+  return previousRuns.find((entry) => entry.id === selectedPreviousRunId) || null;
+}
+
+function updateActiveVersionSnapshot() {
+  const run = activeVersion();
+  if (!run) return null;
+  return savePreviousRun(outputNotes(), {
+    id: run.id,
+    cutoff: run.cursorTime,
+    select: true
+  });
+}
+
+function setGhostTailFromRun(run, cutoff) {
+  ghostNotes = run ? ghostNotesAfterCursor(run.notes, cutoff, run.id) : [];
+}
+
 function loadPreviousRun(run) {
+  updateActiveVersionSnapshot();
   player.stop();
   generatedTokens = [];
   decoder = new PerformanceStreamDecoder();
@@ -212,8 +275,10 @@ function loadPreviousRun(run) {
   streamingStarted = false;
   generationCursorTime = null;
   cursorTime = 0;
+  clearSelection();
   selectedPreviousRunId = run.id;
   renderPreviousRunOptions();
+  pianoRoll.fitToContent();
   drawRoll(noteDuration(generatedNotes));
   updateDownload();
   setStatus(`${generatedNotes.length} notes - ${run.label}`);
@@ -378,6 +443,7 @@ function finishKeyboardNote(code) {
   player.triggerRelease(entry.note.pitch);
   drawRoll();
   updateDownload();
+  updateActiveVersionSnapshot();
   setStatus(`${outputNotes().length} notes`);
   armRecordGeneration();
 }
@@ -428,6 +494,114 @@ function setRecording(nextRecording) {
   updateControls();
 }
 
+function reschedulePlaybackIfRunning() {
+  if (!player.playing) return;
+  cursorTime = player.pause();
+  const notes = playableNotes();
+  if (notes.length) {
+    player.play(notes, { offset: cursorTime });
+  }
+}
+
+function forEachEditableNote(callback) {
+  const seen = new Set();
+  for (const list of [generatedNotes, visibleNotes, userNotes]) {
+    for (const note of list) {
+      if (seen.has(note.id)) continue;
+      seen.add(note.id);
+      callback(note);
+    }
+  }
+}
+
+function moveNotes(ids, deltaSeconds, deltaPitch) {
+  const idSet = new Set(ids);
+  if (!idSet.size) return;
+
+  forEachEditableNote((note) => {
+    if (!idSet.has(note.id)) return;
+    const duration = Math.max(0.05, note.end - note.start);
+    note.start = Math.max(0, note.start + deltaSeconds);
+    note.end = note.start + duration;
+    note.pitch = Math.max(21, Math.min(108, note.pitch + deltaPitch));
+  });
+
+  reschedulePlaybackIfRunning();
+  drawRoll(noteDuration(outputNotes()));
+  updateDownload();
+  updateActiveVersionSnapshot();
+}
+
+function deleteSelectedNotes() {
+  if (!selectedNoteIds.size) return;
+  const keep = (note) => !selectedNoteIds.has(note.id);
+  generatedNotes = generatedNotes.filter(keep);
+  visibleNotes = visibleNotes.filter(keep);
+  userNotes = userNotes.filter(keep);
+  clearSelection();
+  reschedulePlaybackIfRunning();
+  drawRoll(noteDuration(outputNotes()));
+  updateDownload();
+  updateActiveVersionSnapshot();
+  setStatus(`${outputNotes().length} notes`);
+}
+
+async function waitForGenerationToStop() {
+  if (!generating) return;
+  pendingGeneration = null;
+  currentAbortController?.abort();
+  player.stop();
+  const started = performance.now();
+  while (generating && performance.now() - started < 5000) {
+    await new Promise((resolve) => setTimeout(resolve, 16));
+  }
+}
+
+async function replaceWithNotes(notes, label) {
+  await waitForGenerationToStop();
+  releaseKeyboardNotes({ finalize: false });
+  recording = false;
+  player.stop();
+  generatedTokens = [];
+  decoder = new PerformanceStreamDecoder();
+  generatedNotes = cloneNotes(notes);
+  visibleNotes = generatedNotes.slice();
+  userNotes = [];
+  ghostNotes = [];
+  previousRuns = [];
+  selectedPreviousRunId = '';
+  timeOffset = 0;
+  hasTimeOffset = false;
+  streamingStarted = false;
+  generationCursorTime = null;
+  cursorTime = 0;
+  clearSelection();
+  pianoRoll.fitToContent();
+  renderPreviousRunOptions();
+  drawRoll(noteDuration(generatedNotes));
+  updateDownload();
+  setStatus(`${label}: ${generatedNotes.length} notes`);
+}
+
+async function importMidiFile(file) {
+  if (!file) return;
+  try {
+    setStatus(`Importing ${file.name}`);
+    const notes = readMidiFile(await file.arrayBuffer());
+    await replaceWithNotes(notes, file.name);
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || 'Could not import MIDI');
+  } finally {
+    midiFileInput.value = '';
+    rollPanel.classList.remove('is-dragover');
+  }
+}
+
+function findMidiFile(fileList) {
+  return [...(fileList || [])].find((file) => /\.(mid|midi)$/i.test(file.name));
+}
+
 function normalizeNote(note) {
   const offset = hasTimeOffset ? timeOffset : 0;
   return {
@@ -454,15 +628,22 @@ function drawRoll(duration = visibleDuration()) {
     .sort((a, b) => Number(Boolean(b.ghost)) - Number(Boolean(a.ghost))
       || a.start - b.start
       || a.pitch - b.pitch);
+  selectedNoteIds = new Set([...selectedNoteIds].filter((id) => renderedNotes.some((note) => note.id === id && !note.ghost)));
   pianoRoll.setNotes(renderedNotes, Math.max(duration, noteDuration(renderedNotes), 8));
+  pianoRoll.setSelectedNoteIds(selectedNoteIds);
   pianoRoll.setPlayhead(cursorTime);
   pianoRoll.setGenerationCursor(generationCursorTime);
   updateControls();
 }
 
-function refreshVisibleNotes({ useDecoderProgress = false } = {}) {
+function refreshVisibleNotes({ useDecoderProgress = false, updateGenerationCursor = true } = {}) {
   updateTimeOffset();
   visibleNotes = normalizeNotes(decoder.snapshot({ includeOpen: true }));
+  if (!updateGenerationCursor) {
+    drawRoll();
+    return;
+  }
+
   if (generating) {
     const noteEnd = latestNoteEnd(visibleNotes);
     generationCursorTime = useDecoderProgress
@@ -508,7 +689,9 @@ function resetGeneration({ keepUserNotes = false, keepGhostNotes = false } = {})
   streamingStarted = false;
   cursorTime = 0;
   generationCursorTime = null;
+  clearSelection();
   player.stop();
+  pianoRoll.fitToContent();
   drawRoll(8);
   if (midiUrl) {
     URL.revokeObjectURL(midiUrl);
@@ -532,7 +715,7 @@ async function primeDecoder(prefixTokens, signal) {
     if (index % PREFIX_TOKENS_PER_FRAME === 0) {
       timeOffset = 0;
       hasTimeOffset = true;
-      refreshVisibleNotes({ useDecoderProgress: true });
+      refreshVisibleNotes({ updateGenerationCursor: false });
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
 
@@ -543,7 +726,7 @@ async function primeDecoder(prefixTokens, signal) {
   hasTimeOffset = true;
   visibleNotes = normalizeNotes(decoder.snapshot({ includeOpen: true }));
   generatedNotes = normalizeNotes(decoder.finalizedNotes());
-  generationCursorTime = Math.max(latestNoteEnd(visibleNotes) ?? 0, visibleDuration(), cursorTime);
+  generationCursorTime = 0;
   drawRoll(Math.max(visibleDuration(), cursorTime));
 }
 
@@ -578,6 +761,7 @@ function requestGeneration(options = {}) {
     return;
   }
 
+  updateActiveVersionSnapshot();
   startGeneration(options);
 }
 
@@ -587,6 +771,8 @@ async function startGeneration({ prefixTokens = [], streamOffset = 0, preserveGh
   const { signal } = currentAbortController;
 
   try {
+    selectedPreviousRunId = '';
+    renderPreviousRunOptions();
     resetGeneration({ keepGhostNotes: preserveGhostNotes });
     cursorTime = Math.max(0, streamOffset);
     await primeDecoder(prefixTokens, signal);
@@ -607,11 +793,31 @@ async function startGeneration({ prefixTokens = [], streamOffset = 0, preserveGh
       : `Generating 0/${MAX_TOKENS}`);
 
     const seedTokens = prefixTokens.length ? [PAD_SEED_TOKEN, ...prefixTokens] : undefined;
+    const prefixTimes = prefixTokens.length ? prefixTokenTimes(prefixTokens, cursorTime) : [];
+    let lastPrimeStatusAt = 0;
     let index = 0;
     for await (const token of generateTokenStream(musicTransformer, {
       maxTokens: MAX_TOKENS,
       seedTokens,
-      signal
+      signal,
+      onSeedProgress: prefixTokens.length
+        ? ({ completed, total }) => {
+            const processedPrefixTokens = completed === total
+              ? prefixTimes.length - 1
+              : Math.max(0, completed - 2);
+            const progressIndex = Math.min(processedPrefixTokens, prefixTimes.length - 1);
+            generationCursorTime = prefixTimes[progressIndex] ?? 0;
+
+            const now = performance.now();
+            if (now - lastPrimeStatusAt > 100 || completed === total) {
+              lastPrimeStatusAt = now;
+              drawRoll(Math.max(visibleDuration(), cursorTime));
+              setStatus(
+                `Priming model ${completed}/${total} tokens - ${generationCursorTime.toFixed(2)}s/${cursorTime.toFixed(2)}s`
+              );
+            }
+          }
+        : undefined
     })) {
       generatedTokens.push(token);
       const completedNotes = decoder.pushToken(token);
@@ -635,14 +841,15 @@ async function startGeneration({ prefixTokens = [], streamOffset = 0, preserveGh
 
     finishGenerationNotes({ preserveCursor: true, stopPlayback: false });
     ghostNotes = [];
-    savePreviousRun(outputNotes(), { cutoff: 0, select: true });
+    savePreviousRun(outputNotes(), { cutoff: streamOffset, select: true });
     drawRoll(noteDuration(outputNotes()));
     setStatus(`${outputNotes().length} notes, ${generatedTokens.length} tokens`);
   } catch (error) {
     finishGenerationNotes({ preserveCursor: error.name === 'AbortError' });
     if (error.name === 'AbortError') {
+      const savedRun = savePreviousRun(outputNotes(), { cutoff: streamOffset, select: true });
       setStatus(generatedTokens.length
-        ? `Stopped - ${outputNotes().length} notes, ${generatedTokens.length} tokens`
+        ? `Stopped - ${outputNotes().length} notes, ${generatedTokens.length} tokens${savedRun ? ` - ${savedRun.label}` : ''}`
         : 'Stopped');
     } else {
       console.error(error);
@@ -672,10 +879,12 @@ function notesLeftOfCursor(notes = outputNotes()) {
 function regenerateFromCursor() {
   const sourceNotes = playableNotes();
   const prefixTokens = encodeNotesToPerformanceTokens(sourceNotes, cursorTime);
-  const previousRun = savePreviousRun(sourceNotes, {
-    cutoff: cursorTime,
-    showGhostTail: true
-  });
+  const previousRun = updateActiveVersionSnapshot()
+    || savePreviousRun(sourceNotes, {
+      cutoff: cursorTime,
+      select: true
+    });
+  setGhostTailFromRun(previousRun, cursorTime);
   selectedPreviousRunId = '';
   renderPreviousRunOptions();
   if (!prefixTokens.length && cursorTime <= 0) {
@@ -714,11 +923,104 @@ async function togglePlayback() {
   updateControls();
 }
 
+function seekPlayback(seconds) {
+  cursorTime = Math.max(0, seconds);
+  pianoRoll.setPlayhead(cursorTime);
+  if (player.playing) {
+    player.play(playableNotes(), { offset: cursorTime });
+  }
+  updateControls();
+}
+
+function intersectingNotesAtCursor(notes) {
+  return notes.filter((note) => (
+    note.start <= cursorTime + CURSOR_JUMP_EPSILON &&
+    note.end >= cursorTime - CURSOR_JUMP_EPSILON
+  ));
+}
+
+function jumpToPreviousNoteStart() {
+  const notes = playableNotes();
+  if (!notes.length) return;
+
+  const intersecting = intersectingNotesAtCursor(notes);
+  if (intersecting.length) {
+    const start = Math.min(...intersecting.map((note) => note.start));
+    if (cursorTime - start > CURSOR_JUMP_EPSILON) {
+      seekPlayback(start);
+      return;
+    }
+  }
+
+  const previousStarts = notes
+    .map((note) => note.start)
+    .filter((start) => start < cursorTime - CURSOR_JUMP_EPSILON);
+  seekPlayback(previousStarts.length ? Math.max(...previousStarts) : 0);
+}
+
+function jumpToNextNoteEnd() {
+  const notes = playableNotes();
+  if (!notes.length) return;
+
+  const intersecting = intersectingNotesAtCursor(notes);
+  if (intersecting.length) {
+    const end = Math.max(...intersecting.map((note) => note.end));
+    if (end - cursorTime > CURSOR_JUMP_EPSILON) {
+      seekPlayback(end);
+      return;
+    }
+  }
+
+  const nextEnds = notes
+    .map((note) => note.end)
+    .filter((end) => end > cursorTime + CURSOR_JUMP_EPSILON);
+  if (nextEnds.length) {
+    seekPlayback(Math.min(...nextEnds));
+  }
+}
+
 generateButton.addEventListener('click', () => requestGeneration());
 recordButton.addEventListener('click', () => setRecording(!recording));
 regenerateButton.addEventListener('click', regenerateFromCursor);
 stopButton.addEventListener('click', () => stopCurrentGeneration('Stopping'));
 playButton.addEventListener('click', togglePlayback);
+uploadMidiButton.addEventListener('click', () => midiFileInput.click());
+midiFileInput.addEventListener('change', () => {
+  importMidiFile(midiFileInput.files?.[0]);
+});
+
+rollPanel.addEventListener('dragenter', (event) => {
+  event.preventDefault();
+  rollPanel.classList.add('is-dragover');
+});
+
+rollPanel.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  rollPanel.classList.add('is-dragover');
+});
+
+rollPanel.addEventListener('dragleave', (event) => {
+  if (!event.relatedTarget || !rollPanel.contains(event.relatedTarget)) {
+    rollPanel.classList.remove('is-dragover');
+  }
+});
+
+rollPanel.addEventListener('drop', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  rollPanel.classList.remove('is-dragover');
+  importMidiFile(findMidiFile(event.dataTransfer?.files));
+});
+
+document.addEventListener('dragover', (event) => {
+  event.preventDefault();
+});
+
+document.addEventListener('drop', (event) => {
+  event.preventDefault();
+  rollPanel.classList.remove('is-dragover');
+  importMidiFile(findMidiFile(event.dataTransfer?.files));
+});
 
 document.addEventListener('keydown', (event) => {
   if (!recording) return;
@@ -741,13 +1043,46 @@ document.addEventListener('keyup', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
-  if (event.code !== 'Space') return;
-  const tagName = event.target?.tagName;
-  if (['BUTTON', 'SELECT', 'INPUT', 'TEXTAREA'].includes(tagName)) return;
+  if (event.code === 'Space') {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) togglePlayback();
+    return;
+  }
 
+  if (event.key === 'Escape' && selectedNoteIds.size) {
+    event.preventDefault();
+    clearSelection();
+    updateControls();
+    return;
+  }
+
+  const tagName = event.target?.tagName;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) return;
+
+  if ((event.key === 'Delete' || event.key === 'Backspace') && selectedNoteIds.size) {
+    event.preventDefault();
+    deleteSelectedNotes();
+    return;
+  }
+
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    jumpToPreviousNoteStart();
+    return;
+  }
+
+  if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    jumpToNextNoteEnd();
+  }
+}, { capture: true });
+
+document.addEventListener('keyup', (event) => {
+  if (event.code !== 'Space') return;
   event.preventDefault();
-  togglePlayback();
-});
+  event.stopPropagation();
+}, { capture: true });
 
 window.addEventListener('blur', () => {
   if (!recording || !activeKeyboardNotes.size) return;
@@ -774,8 +1109,14 @@ synthSelect.addEventListener('change', async () => {
 });
 
 previousRunsSelect.addEventListener('change', () => {
-  selectedPreviousRunId = previousRunsSelect.value;
-  const run = previousRuns.find((entry) => entry.id === selectedPreviousRunId);
+  const nextRunId = previousRunsSelect.value;
+  if (!nextRunId || nextRunId === selectedPreviousRunId) {
+    renderPreviousRunOptions();
+    return;
+  }
+
+  updateActiveVersionSnapshot();
+  const run = previousRuns.find((entry) => entry.id === nextRunId);
   if (!run) {
     renderPreviousRunOptions();
     return;
@@ -784,12 +1125,15 @@ previousRunsSelect.addEventListener('change', () => {
 });
 
 pianoRoll.setSeekHandler((seconds) => {
-  cursorTime = seconds;
-  pianoRoll.setPlayhead(cursorTime);
-  if (player.playing) {
-    player.play(playableNotes(), { offset: cursorTime });
-  }
-  updateControls();
+  seekPlayback(seconds);
+});
+
+pianoRoll.setSelectionChangeHandler((ids) => {
+  setSelection(ids);
+});
+
+pianoRoll.setNoteMoveHandler((ids, deltaSeconds, deltaPitch) => {
+  moveNotes(ids, deltaSeconds, deltaPitch);
 });
 
 pianoRoll.setNoteDrawHandler((note) => {
@@ -800,8 +1144,10 @@ pianoRoll.setNoteDrawHandler((note) => {
   };
   userNotes.push(created);
   cursorTime = created.end;
+  setSelection([created.id]);
   drawRoll();
   updateDownload();
+  updateActiveVersionSnapshot();
   setStatus(`${outputNotes().length} notes`);
 });
 
@@ -828,6 +1174,7 @@ function animate() {
 }
 
 setIconButton(stopButton, 'square', 'Stop');
+setIconButton(uploadMidiButton, 'upload', 'Upload MIDI');
 setIconButton(downloadButton, 'download', 'Download MIDI');
 setRecordButtonState();
 renderPreviousRunOptions();
