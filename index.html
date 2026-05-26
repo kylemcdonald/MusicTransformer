@@ -38,6 +38,9 @@
           <button id="upload-midi" class="icon-button" type="button" aria-label="Upload MIDI" title="Upload MIDI">
             <i data-lucide="upload"></i>
           </button>
+          <button id="settings" class="icon-button" type="button" aria-label="Generation settings" title="Generation settings">
+            <i data-lucide="sliders-horizontal"></i>
+          </button>
           <input id="midi-file" class="file-input" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" />
         </div>
       </header>
@@ -45,6 +48,130 @@
       <section class="roll-panel" aria-label="Piano roll">
         <canvas id="piano-roll"></canvas>
       </section>
+
+      <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+        <form class="settings-card" method="dialog">
+          <header class="settings-header">
+            <h2 id="settings-title">Generation Settings</h2>
+            <button class="icon-button" type="submit" aria-label="Close settings" title="Close settings">
+              <i data-lucide="x"></i>
+            </button>
+          </header>
+
+          <div class="settings-grid">
+            <div class="setting-control">
+              <div class="setting-label">
+                <label for="temperature">Temperature</label>
+                <output id="temperature-value" for="temperature temperature-number"></output>
+              </div>
+              <div class="setting-inputs">
+                <input id="temperature" type="range" min="0.05" max="2" step="0.05" />
+                <input id="temperature-number" type="number" min="0.05" max="2" step="0.05" aria-label="Temperature value" />
+              </div>
+            </div>
+
+            <div class="setting-control">
+              <div class="setting-label">
+                <label for="top-k">Top K</label>
+                <output id="top-k-value" for="top-k top-k-number"></output>
+              </div>
+              <div class="setting-inputs">
+                <input id="top-k" type="range" min="1" max="300" step="1" />
+                <input id="top-k-number" type="number" min="1" max="300" step="1" aria-label="Top K value" />
+              </div>
+            </div>
+
+            <div class="setting-control">
+              <div class="setting-label">
+                <label for="max-note-duration">Maximum Note Duration</label>
+                <output id="max-note-duration-value" for="max-note-duration max-note-duration-number"></output>
+              </div>
+              <div class="setting-inputs">
+                <input id="max-note-duration" type="range" min="0.05" max="8" step="0.05" />
+                <input id="max-note-duration-number" type="number" min="0.05" max="8" step="0.05" aria-label="Maximum note duration value" />
+              </div>
+            </div>
+
+            <div class="setting-control">
+              <div class="setting-label">
+                <span>Pitch Range</span>
+                <output id="pitch-range-value" for="min-pitch max-pitch min-pitch-number max-pitch-number"></output>
+              </div>
+              <div class="range-setting-inputs">
+                <div class="range-slider">
+                  <input id="min-pitch" type="range" min="21" max="108" step="1" aria-label="Minimum pitch" />
+                  <input id="max-pitch" type="range" min="21" max="108" step="1" aria-label="Maximum pitch" />
+                </div>
+                <div class="range-number-inputs">
+                  <input id="min-pitch-number" type="number" min="21" max="108" step="1" aria-label="Minimum pitch value" />
+                  <input id="max-pitch-number" type="number" min="21" max="108" step="1" aria-label="Maximum pitch value" />
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-control">
+              <div class="setting-label">
+                <span>Time Shift Range</span>
+                <output id="time-shift-range-value" for="min-time-shift max-time-shift min-time-shift-number max-time-shift-number"></output>
+              </div>
+              <div class="range-setting-inputs">
+                <div class="range-slider">
+                  <input id="min-time-shift" type="range" min="0.01" max="1" step="0.01" aria-label="Minimum time shift" />
+                  <input id="max-time-shift" type="range" min="0.01" max="1" step="0.01" aria-label="Maximum time shift" />
+                </div>
+                <div class="range-number-inputs">
+                  <input id="min-time-shift-number" type="number" min="0.01" max="1" step="0.01" aria-label="Minimum time shift value" />
+                  <input id="max-time-shift-number" type="number" min="0.01" max="1" step="0.01" aria-label="Maximum time shift value" />
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-control">
+              <div class="setting-label">
+                <span>Velocity Range</span>
+                <output id="velocity-range-value" for="min-velocity max-velocity min-velocity-number max-velocity-number"></output>
+              </div>
+              <div class="range-setting-inputs">
+                <div class="range-slider">
+                  <input id="min-velocity" type="range" min="1" max="127" step="1" aria-label="Minimum velocity" />
+                  <input id="max-velocity" type="range" min="1" max="127" step="1" aria-label="Maximum velocity" />
+                </div>
+                <div class="range-number-inputs">
+                  <input id="min-velocity-number" type="number" min="1" max="127" step="1" aria-label="Minimum velocity value" />
+                  <input id="max-velocity-number" type="number" min="1" max="127" step="1" aria-label="Maximum velocity value" />
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-control">
+              <div class="setting-label">
+                <label for="min-tokens">Minimum Tokens</label>
+                <output id="min-tokens-value" for="min-tokens min-tokens-number"></output>
+              </div>
+              <div class="setting-inputs">
+                <input id="min-tokens" type="range" min="0" max="2048" step="1" />
+                <input id="min-tokens-number" type="number" min="0" max="2048" step="1" aria-label="Minimum token value" />
+              </div>
+            </div>
+
+            <div class="setting-control">
+              <div class="setting-label">
+                <label for="max-tokens">Maximum Tokens</label>
+                <output id="max-tokens-value" for="max-tokens max-tokens-number"></output>
+              </div>
+              <div class="setting-inputs">
+                <input id="max-tokens" type="range" min="256" max="8192" step="256" />
+                <input id="max-tokens-number" type="number" min="256" max="8192" step="256" aria-label="Maximum token value" />
+              </div>
+            </div>
+          </div>
+
+          <footer class="settings-actions">
+            <button id="settings-reset" class="secondary-button" type="button">Reset</button>
+            <button class="primary-button" type="submit">Done</button>
+          </footer>
+        </form>
+      </dialog>
     </main>
     <script type="module" src="/src/main.js"></script>
   </body>

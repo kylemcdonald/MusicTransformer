@@ -50,6 +50,24 @@ select {
   font-weight: 700;
 }
 
+input[type="number"] {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  width: 96px;
+  min-height: 40px;
+  padding: 0 10px;
+  background: #171d27;
+  color: #f4f0e8;
+  font: inherit;
+  font-weight: 700;
+}
+
+input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  accent-color: #47bda8;
+}
+
 #previous-runs {
   max-width: 220px;
 }
@@ -187,6 +205,182 @@ p {
   cursor: crosshair;
 }
 
+.settings-dialog {
+  border: 0;
+  padding: 0;
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(680px, calc(100vh - 32px));
+  background: transparent;
+  color: #f4f0e8;
+}
+
+.settings-dialog::backdrop {
+  background: rgba(6, 8, 12, 0.72);
+}
+
+.settings-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  margin: 0;
+  overflow: hidden;
+  max-height: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: #171d27;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 18px;
+  overflow: auto;
+  padding: 18px;
+}
+
+.setting-control {
+  display: grid;
+  gap: 8px;
+}
+
+.setting-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #f4f0e8;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.setting-label output {
+  color: #aab0ba;
+  font-variant-numeric: tabular-nums;
+}
+
+.setting-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-setting-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-number-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.range-slider {
+  --range-start: 0%;
+  --range-end: 100%;
+  position: relative;
+  display: grid;
+  align-items: center;
+  height: 40px;
+}
+
+.range-slider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 6px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background:
+    linear-gradient(
+      to right,
+      #303844 0 var(--range-start),
+      #47bda8 var(--range-start) var(--range-end),
+      #303844 var(--range-end) 100%
+    );
+}
+
+.range-slider input[type="range"] {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  pointer-events: none;
+  appearance: none;
+  background: transparent;
+  accent-color: transparent;
+}
+
+.range-slider input[type="range"]:first-child {
+  z-index: 2;
+}
+
+.range-slider input[type="range"]:last-child {
+  z-index: 3;
+}
+
+.range-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+}
+
+.range-slider input[type="range"]::-moz-range-track {
+  height: 6px;
+  background: transparent;
+}
+
+.range-slider input[type="range"]::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border: 3px solid #47bda8;
+  border-radius: 50%;
+  background: #f4f0e8;
+  cursor: pointer;
+  pointer-events: auto;
+  appearance: none;
+}
+
+.range-slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #47bda8;
+  border-radius: 50%;
+  background: #f4f0e8;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: #131820;
+}
+
 @media (max-width: 720px) {
   .topbar {
     align-items: stretch;
@@ -215,5 +409,17 @@ p {
   select {
     flex: 1 1 100%;
     max-width: none;
+  }
+
+  .setting-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .range-setting-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  input[type="number"] {
+    width: 100%;
   }
 }

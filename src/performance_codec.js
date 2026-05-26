@@ -152,9 +152,20 @@ export function encodeNotesToPerformanceTokens(notes, cutoffSeconds = Infinity) 
   return tokens;
 }
 
+function maxNoteDurationToSteps(maxNoteDuration) {
+  const seconds = Number(maxNoteDuration);
+  if (!Number.isFinite(seconds) || seconds <= 0) return Infinity;
+  return Math.max(1, Math.round(seconds * STEPS_PER_SECOND));
+}
+
 export class PerformanceStreamDecoder {
-  constructor() {
+  constructor({ maxNoteDuration = Infinity } = {}) {
+    this.maxNoteSteps = maxNoteDurationToSteps(maxNoteDuration);
     this.reset();
+  }
+
+  setMaxNoteDuration(maxNoteDuration) {
+    this.maxNoteSteps = maxNoteDurationToSteps(maxNoteDuration);
   }
 
   reset() {
@@ -193,7 +204,7 @@ export class PerformanceStreamDecoder {
         this.firstNoteStep = this.step;
       }
       const stack = this.active.get(pitch) || [];
-      stack.push({ step: this.step, velocity: this.velocity });
+      stack.push({ step: this.step, velocity: this.velocity, maxNoteSteps: this.maxNoteSteps });
       this.active.set(pitch, stack);
       return completed;
     }
@@ -209,7 +220,13 @@ export class PerformanceStreamDecoder {
       }
 
       if (start && this.step > start.step) {
-        const note = this.createNote(pitch, start.step, this.step, start.velocity, false);
+        const note = this.createNote(
+          pitch,
+          start.step,
+          this.cappedEndStep(start, this.step),
+          start.velocity,
+          false
+        );
         this.notes.push(note);
         completed.push(note);
       }
@@ -218,11 +235,47 @@ export class PerformanceStreamDecoder {
 
     if (token < VELOCITY_START) {
       this.step += token - TIME_SHIFT_START + 1;
-      return completed;
+      return this.completeExpiredNotes();
     }
 
     const velocityBin = token - VELOCITY_START + 1;
     this.velocity = velocityBinToVelocity(velocityBin);
+    return completed;
+  }
+
+  cappedEndStep(start, endStep) {
+    const maxNoteSteps = start.maxNoteSteps ?? Infinity;
+    if (!Number.isFinite(maxNoteSteps)) return endStep;
+    return Math.min(endStep, start.step + maxNoteSteps);
+  }
+
+  completeExpiredNotes() {
+    const completed = [];
+
+    for (const [pitch, starts] of this.active.entries()) {
+      const remaining = [];
+      for (const start of starts) {
+        const endStep = this.cappedEndStep(start, this.step);
+        if (endStep > start.step && endStep <= this.step) {
+          const expired = Number.isFinite(start.maxNoteSteps)
+            && endStep >= start.step + start.maxNoteSteps;
+          if (expired) {
+            const note = this.createNote(pitch, start.step, endStep, start.velocity, false);
+            this.notes.push(note);
+            completed.push(note);
+            continue;
+          }
+        }
+        remaining.push(start);
+      }
+
+      if (remaining.length) {
+        this.active.set(pitch, remaining);
+      } else {
+        this.active.delete(pitch);
+      }
+    }
+
     return completed;
   }
 
@@ -246,7 +299,13 @@ export class PerformanceStreamDecoder {
     for (const [pitch, starts] of this.active.entries()) {
       for (const start of starts) {
         if (this.step > start.step) {
-          notes.push(this.createNote(pitch, start.step, this.step, start.velocity, true));
+          notes.push(this.createNote(
+            pitch,
+            start.step,
+            this.cappedEndStep(start, this.step),
+            start.velocity,
+            true
+          ));
         }
       }
     }

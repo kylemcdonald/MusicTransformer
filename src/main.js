@@ -1,6 +1,18 @@
 import './styles.css';
 
-import { Circle, CircleDot, createIcons, Download, Pause, Play, RotateCcw, Square, Upload } from 'lucide';
+import {
+  Circle,
+  CircleDot,
+  createIcons,
+  Download,
+  Pause,
+  Play,
+  RotateCcw,
+  SlidersHorizontal,
+  Square,
+  Upload,
+  X
+} from 'lucide';
 
 import { backendName, generateTokenStream, loadMusicTransformer } from './model.js';
 import {
@@ -21,6 +33,35 @@ const FIRST_NOTE_LEAD_IN = 1;
 const PAD_SEED_TOKEN = 0;
 const KEYBOARD_NOTE_VELOCITY = 108;
 const CURSOR_JUMP_EPSILON = 0.03;
+const SETTINGS_STORAGE_KEY = 'music-transformer-generation-settings';
+
+const DEFAULT_GENERATION_SETTINGS = Object.freeze({
+  temperature: 1,
+  topK: 64,
+  maxNoteDuration: 1,
+  minPitch: 21,
+  maxPitch: 108,
+  minTimeShift: 0.01,
+  maxTimeShift: 1,
+  minVelocity: 1,
+  maxVelocity: 127,
+  minTokens: 256,
+  maxTokens: MAX_TOKENS
+});
+
+const GENERATION_SETTING_LIMITS = Object.freeze({
+  temperature: { min: 0.05, max: 2, step: 0.05, digits: 2 },
+  topK: { min: 1, max: 300, step: 1, digits: 0 },
+  maxNoteDuration: { min: 0.05, max: 8, step: 0.05, digits: 2, unit: 's' },
+  minPitch: { min: 21, max: 108, step: 1, digits: 0 },
+  maxPitch: { min: 21, max: 108, step: 1, digits: 0 },
+  minTimeShift: { min: 0.01, max: 1, step: 0.01, digits: 2, unit: 's' },
+  maxTimeShift: { min: 0.01, max: 1, step: 0.01, digits: 2, unit: 's' },
+  minVelocity: { min: 1, max: 127, step: 1, digits: 0 },
+  maxVelocity: { min: 1, max: 127, step: 1, digits: 0 },
+  minTokens: { min: 0, max: 2048, step: 1, digits: 0 },
+  maxTokens: { min: 256, max: MAX_TOKENS, step: 256, digits: 0 }
+});
 
 const KEYBOARD_PITCHES = new Map([
   ['KeyA', 60],
@@ -51,16 +92,78 @@ const playButton = document.querySelector('#play');
 const downloadButton = document.querySelector('#download');
 const synthSelect = document.querySelector('#synth-select');
 const previousRunsSelect = document.querySelector('#previous-runs');
+const settingsButton = document.querySelector('#settings');
+const settingsDialog = document.querySelector('#settings-dialog');
+const settingsResetButton = document.querySelector('#settings-reset');
 const statusText = document.querySelector('#status');
 const rollPanel = document.querySelector('.roll-panel');
 const pianoRoll = new PianoRoll(document.querySelector('#piano-roll'));
 const player = new MidiPlayer();
 
+const settingFields = {
+  temperature: {
+    slider: document.querySelector('#temperature'),
+    number: document.querySelector('#temperature-number'),
+    output: document.querySelector('#temperature-value')
+  },
+  topK: {
+    slider: document.querySelector('#top-k'),
+    number: document.querySelector('#top-k-number'),
+    output: document.querySelector('#top-k-value')
+  },
+  maxNoteDuration: {
+    slider: document.querySelector('#max-note-duration'),
+    number: document.querySelector('#max-note-duration-number'),
+    output: document.querySelector('#max-note-duration-value')
+  },
+  minTokens: {
+    slider: document.querySelector('#min-tokens'),
+    number: document.querySelector('#min-tokens-number'),
+    output: document.querySelector('#min-tokens-value')
+  },
+  maxTokens: {
+    slider: document.querySelector('#max-tokens'),
+    number: document.querySelector('#max-tokens-number'),
+    output: document.querySelector('#max-tokens-value')
+  }
+};
+
+const rangeSettingFields = {
+  pitch: {
+    minName: 'minPitch',
+    maxName: 'maxPitch',
+    sliderMin: document.querySelector('#min-pitch'),
+    sliderMax: document.querySelector('#max-pitch'),
+    numberMin: document.querySelector('#min-pitch-number'),
+    numberMax: document.querySelector('#max-pitch-number'),
+    output: document.querySelector('#pitch-range-value')
+  },
+  timeShift: {
+    minName: 'minTimeShift',
+    maxName: 'maxTimeShift',
+    sliderMin: document.querySelector('#min-time-shift'),
+    sliderMax: document.querySelector('#max-time-shift'),
+    numberMin: document.querySelector('#min-time-shift-number'),
+    numberMax: document.querySelector('#max-time-shift-number'),
+    output: document.querySelector('#time-shift-range-value')
+  },
+  velocity: {
+    minName: 'minVelocity',
+    maxName: 'maxVelocity',
+    sliderMin: document.querySelector('#min-velocity'),
+    sliderMax: document.querySelector('#max-velocity'),
+    numberMin: document.querySelector('#min-velocity-number'),
+    numberMax: document.querySelector('#max-velocity-number'),
+    output: document.querySelector('#velocity-range-value')
+  }
+};
+
 const GHOST_NOTE_OPACITY = 0.2;
 const MAX_PREVIOUS_RUNS = 12;
 
 let model = null;
-let decoder = new PerformanceStreamDecoder();
+let generationSettings = loadGenerationSettings();
+let decoder = createPerformanceDecoder();
 let generatedTokens = [];
 let generatedNotes = [];
 let visibleNotes = [];
@@ -94,8 +197,172 @@ function setStatus(text) {
 
 function renderLucideIcons() {
   createIcons({
-    icons: { Circle, CircleDot, Download, Pause, Play, RotateCcw, Square, Upload }
+    icons: {
+      Circle,
+      CircleDot,
+      Download,
+      Pause,
+      Play,
+      RotateCcw,
+      SlidersHorizontal,
+      Square,
+      Upload,
+      X
+    }
   });
+}
+
+function normalizeSettingValue(name, value, { maxOverride } = {}) {
+  const limits = GENERATION_SETTING_LIMITS[name];
+  const fallback = DEFAULT_GENERATION_SETTINGS[name];
+  const max = maxOverride ?? limits.max;
+  const min = Math.min(limits.min, max);
+  let next = Number(value);
+  if (!Number.isFinite(next)) next = fallback;
+  next = Math.min(max, Math.max(min, next));
+  next = Math.round(next / limits.step) * limits.step;
+  next = Math.min(max, Math.max(min, next));
+  return limits.digits > 0 ? Number(next.toFixed(limits.digits)) : Math.round(next);
+}
+
+function normalizeSettingRange(settings, minName, maxName) {
+  const minValue = normalizeSettingValue(minName, settings[minName]);
+  const maxValue = normalizeSettingValue(maxName, settings[maxName]);
+  return minValue <= maxValue ? [minValue, maxValue] : [maxValue, minValue];
+}
+
+function normalizeGenerationSettings(settings = {}) {
+  const maxTokens = normalizeSettingValue('maxTokens', settings.maxTokens);
+  const [minPitch, maxPitch] = normalizeSettingRange(settings, 'minPitch', 'maxPitch');
+  const [minTimeShift, maxTimeShift] = normalizeSettingRange(
+    settings,
+    'minTimeShift',
+    'maxTimeShift'
+  );
+  const [minVelocity, maxVelocity] = normalizeSettingRange(
+    settings,
+    'minVelocity',
+    'maxVelocity'
+  );
+
+  return {
+    temperature: normalizeSettingValue('temperature', settings.temperature),
+    topK: normalizeSettingValue('topK', settings.topK),
+    maxNoteDuration: normalizeSettingValue('maxNoteDuration', settings.maxNoteDuration),
+    minPitch,
+    maxPitch,
+    minTimeShift,
+    maxTimeShift,
+    minVelocity,
+    maxVelocity,
+    minTokens: normalizeSettingValue('minTokens', settings.minTokens, {
+      maxOverride: Math.min(GENERATION_SETTING_LIMITS.minTokens.max, maxTokens)
+    }),
+    maxTokens
+  };
+}
+
+function loadGenerationSettings() {
+  try {
+    const savedSettings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
+    return normalizeGenerationSettings(savedSettings);
+  } catch {
+    return { ...DEFAULT_GENERATION_SETTINGS };
+  }
+}
+
+function saveGenerationSettings() {
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(generationSettings));
+  } catch {
+    // Local storage is optional; the current session still uses the setting.
+  }
+}
+
+function formatSettingValue(name, value) {
+  return GENERATION_SETTING_LIMITS[name].digits > 0 ? value.toFixed(2) : String(value);
+}
+
+function formatSettingOutput(name, value) {
+  return `${formatSettingValue(name, value)}${GENERATION_SETTING_LIMITS[name].unit || ''}`;
+}
+
+function formatRangeOutput(name, minValue, maxValue) {
+  if (name === 'timeShift') {
+    return `${formatSettingOutput('minTimeShift', minValue)}-${formatSettingOutput('maxTimeShift', maxValue)}`;
+  }
+  return `${formatSettingValue(rangeSettingFields[name].minName, minValue)}-${formatSettingValue(rangeSettingFields[name].maxName, maxValue)}`;
+}
+
+function updateRangeSliderFill(field, minValue, maxValue) {
+  const limits = GENERATION_SETTING_LIMITS[field.minName];
+  const range = limits.max - limits.min;
+  const start = range > 0 ? ((minValue - limits.min) / range) * 100 : 0;
+  const end = range > 0 ? ((maxValue - limits.min) / range) * 100 : 100;
+  field.sliderMin.parentElement.style.setProperty('--range-start', `${start}%`);
+  field.sliderMin.parentElement.style.setProperty('--range-end', `${end}%`);
+}
+
+function renderGenerationSettings() {
+  generationSettings = normalizeGenerationSettings(generationSettings);
+
+  const minTokensMax = Math.min(
+    GENERATION_SETTING_LIMITS.minTokens.max,
+    generationSettings.maxTokens
+  );
+  settingFields.minTokens.slider.max = String(minTokensMax);
+  settingFields.minTokens.number.max = String(minTokensMax);
+
+  for (const [name, field] of Object.entries(settingFields)) {
+    const value = generationSettings[name];
+    const formatted = formatSettingValue(name, value);
+    field.slider.value = String(value);
+    field.number.value = formatted;
+    field.output.value = formatted;
+    field.output.textContent = formatSettingOutput(name, value);
+  }
+
+  for (const [name, field] of Object.entries(rangeSettingFields)) {
+    const minValue = generationSettings[field.minName];
+    const maxValue = generationSettings[field.maxName];
+    const formattedMin = formatSettingValue(field.minName, minValue);
+    const formattedMax = formatSettingValue(field.maxName, maxValue);
+    field.sliderMin.value = String(minValue);
+    field.sliderMax.value = String(maxValue);
+    field.numberMin.value = formattedMin;
+    field.numberMax.value = formattedMax;
+    field.output.value = `${formattedMin}-${formattedMax}`;
+    field.output.textContent = formatRangeOutput(name, minValue, maxValue);
+    updateRangeSliderFill(field, minValue, maxValue);
+  }
+}
+
+function setGenerationSetting(name, value) {
+  generationSettings = normalizeGenerationSettings({
+    ...generationSettings,
+    [name]: value
+  });
+  renderGenerationSettings();
+  saveGenerationSettings();
+}
+
+function setRangeGenerationSetting(name, side, value) {
+  const field = rangeSettingFields[name];
+  const settingName = side === 'min' ? field.minName : field.maxName;
+  const nextValue = normalizeSettingValue(settingName, value);
+  const nextSettings = { ...generationSettings };
+  if (side === 'min') {
+    nextSettings[field.minName] = Math.min(nextValue, generationSettings[field.maxName]);
+  } else {
+    nextSettings[field.maxName] = Math.max(nextValue, generationSettings[field.minName]);
+  }
+  generationSettings = normalizeGenerationSettings(nextSettings);
+  renderGenerationSettings();
+  saveGenerationSettings();
+}
+
+function createPerformanceDecoder({ maxNoteDuration = Infinity } = {}) {
+  return new PerformanceStreamDecoder({ maxNoteDuration });
 }
 
 function setIconButton(button, icon, label) {
@@ -265,7 +532,7 @@ function loadPreviousRun(run) {
   updateActiveVersionSnapshot();
   player.stop();
   generatedTokens = [];
-  decoder = new PerformanceStreamDecoder();
+  decoder = createPerformanceDecoder();
   generatedNotes = cloneNotes(run.notes);
   visibleNotes = generatedNotes.slice();
   userNotes = [];
@@ -366,9 +633,10 @@ function cancelRecordGenerationTimer() {
 }
 
 function keyboardEventTargetAllowsRecording(event) {
+  if (settingsDialog.open) return false;
   if (event.metaKey || event.ctrlKey || event.altKey) return false;
   const tagName = event.target?.tagName;
-  return !['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName);
+  return !['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(tagName);
 }
 
 function updateActiveKeyboardNoteEnds() {
@@ -563,7 +831,7 @@ async function replaceWithNotes(notes, label) {
   recording = false;
   player.stop();
   generatedTokens = [];
-  decoder = new PerformanceStreamDecoder();
+  decoder = createPerformanceDecoder();
   generatedNotes = cloneNotes(notes);
   visibleNotes = generatedNotes.slice();
   userNotes = [];
@@ -683,7 +951,7 @@ function resetGeneration({ keepUserNotes = false, keepGhostNotes = false } = {})
     selectedPreviousRunId = '';
     renderPreviousRunOptions();
   }
-  decoder = new PerformanceStreamDecoder();
+  decoder = createPerformanceDecoder();
   timeOffset = 0;
   hasTimeOffset = false;
   streamingStarted = false;
@@ -769,6 +1037,7 @@ async function startGeneration({ prefixTokens = [], streamOffset = 0, preserveGh
   generating = true;
   currentAbortController = new AbortController();
   const { signal } = currentAbortController;
+  const runSettings = normalizeGenerationSettings(generationSettings);
 
   try {
     selectedPreviousRunId = '';
@@ -776,6 +1045,7 @@ async function startGeneration({ prefixTokens = [], streamOffset = 0, preserveGh
     resetGeneration({ keepGhostNotes: preserveGhostNotes });
     cursorTime = Math.max(0, streamOffset);
     await primeDecoder(prefixTokens, signal);
+    decoder.setMaxNoteDuration(runSettings.maxNoteDuration);
     if (!prefixTokens.length) {
       generationCursorTime = null;
     }
@@ -790,14 +1060,23 @@ async function startGeneration({ prefixTokens = [], streamOffset = 0, preserveGh
 
     setStatus(prefixTokens.length
       ? `Regenerating from ${cursorTime.toFixed(2)}s`
-      : `Generating 0/${MAX_TOKENS}`);
+      : `Generating 0/${runSettings.maxTokens}`);
 
     const seedTokens = prefixTokens.length ? [PAD_SEED_TOKEN, ...prefixTokens] : undefined;
     const prefixTimes = prefixTokens.length ? prefixTokenTimes(prefixTokens, cursorTime) : [];
     let lastPrimeStatusAt = 0;
     let index = 0;
     for await (const token of generateTokenStream(musicTransformer, {
-      maxTokens: MAX_TOKENS,
+      maxTokens: runSettings.maxTokens,
+      minTokens: runSettings.minTokens,
+      temperature: runSettings.temperature,
+      topK: runSettings.topK,
+      minPitch: runSettings.minPitch,
+      maxPitch: runSettings.maxPitch,
+      minTimeShift: runSettings.minTimeShift,
+      maxTimeShift: runSettings.maxTimeShift,
+      minVelocity: runSettings.minVelocity,
+      maxVelocity: runSettings.maxVelocity,
       seedTokens,
       signal,
       onSeedProgress: prefixTokens.length
@@ -832,7 +1111,7 @@ async function startGeneration({ prefixTokens = [], streamOffset = 0, preserveGh
 
       if (index % TOKENS_PER_FRAME === 0) {
         refreshVisibleNotes();
-        setStatus(`Generating ${generatedTokens.length}/${MAX_TOKENS} - ${renderedNotes.length} notes`);
+        setStatus(`Generating ${generatedTokens.length}/${runSettings.maxTokens} - ${renderedNotes.length} notes`);
         await new Promise((resolve) => requestAnimationFrame(resolve));
       }
 
@@ -985,6 +1264,30 @@ regenerateButton.addEventListener('click', regenerateFromCursor);
 stopButton.addEventListener('click', () => stopCurrentGeneration('Stopping'));
 playButton.addEventListener('click', togglePlayback);
 uploadMidiButton.addEventListener('click', () => midiFileInput.click());
+settingsButton.addEventListener('click', () => {
+  renderGenerationSettings();
+  settingsDialog.showModal();
+});
+settingsDialog.addEventListener('click', (event) => {
+  if (event.target === settingsDialog) {
+    settingsDialog.close();
+  }
+});
+settingsResetButton.addEventListener('click', () => {
+  generationSettings = { ...DEFAULT_GENERATION_SETTINGS };
+  renderGenerationSettings();
+  saveGenerationSettings();
+});
+for (const [name, field] of Object.entries(settingFields)) {
+  field.slider.addEventListener('input', () => setGenerationSetting(name, field.slider.value));
+  field.number.addEventListener('change', () => setGenerationSetting(name, field.number.value));
+}
+for (const [name, field] of Object.entries(rangeSettingFields)) {
+  field.sliderMin.addEventListener('input', () => setRangeGenerationSetting(name, 'min', field.sliderMin.value));
+  field.sliderMax.addEventListener('input', () => setRangeGenerationSetting(name, 'max', field.sliderMax.value));
+  field.numberMin.addEventListener('change', () => setRangeGenerationSetting(name, 'min', field.numberMin.value));
+  field.numberMax.addEventListener('change', () => setRangeGenerationSetting(name, 'max', field.numberMax.value));
+}
 midiFileInput.addEventListener('change', () => {
   importMidiFile(midiFileInput.files?.[0]);
 });
@@ -1043,6 +1346,8 @@ document.addEventListener('keyup', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+  if (settingsDialog.open) return;
+
   if (event.code === 'Space') {
     event.preventDefault();
     event.stopPropagation();
@@ -1177,6 +1482,7 @@ setIconButton(stopButton, 'square', 'Stop');
 setIconButton(uploadMidiButton, 'upload', 'Upload MIDI');
 setIconButton(downloadButton, 'download', 'Download MIDI');
 setRecordButtonState();
+renderGenerationSettings();
 renderPreviousRunOptions();
 updateControls();
 animate();

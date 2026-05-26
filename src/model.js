@@ -1,3 +1,12 @@
+import {
+  MAX_PITCH,
+  MAX_VELOCITY,
+  MIN_PITCH,
+  MIN_VELOCITY,
+  STEPS_PER_SECOND,
+  tokenEvent
+} from './performance_codec.js';
+
 const PUBLIC_BASE_URL = import.meta.env.BASE_URL || '/';
 const MANIFEST_URL = new URL('manual-model/manifest.json', new URL(PUBLIC_BASE_URL, window.location.href)).href;
 const WEIGHTS_URL = new URL('manual-model/weights.bin', new URL(PUBLIC_BASE_URL, window.location.href)).href;
@@ -391,6 +400,47 @@ function dispatch1d(pass, pipeline, bindGroup, count, workgroupSize = 64) {
   pass.dispatchWorkgroups(Math.ceil(count / workgroupSize));
 }
 
+function numberOption(options, name, fallback) {
+  const value = Number(options[name]);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function rangeOption(options, minName, maxName, fallbackMin, fallbackMax) {
+  const minValue = numberOption(options, minName, fallbackMin);
+  const maxValue = numberOption(options, maxName, fallbackMax);
+  return minValue <= maxValue ? [minValue, maxValue] : [maxValue, minValue];
+}
+
+function tokenAllowedByOptions(token, options) {
+  const event = tokenEvent(token, 0);
+  if (event.type === 'note_on') {
+    const [minPitch, maxPitch] = rangeOption(options, 'minPitch', 'maxPitch', MIN_PITCH, MAX_PITCH);
+    return event.pitch >= minPitch && event.pitch <= maxPitch;
+  }
+  if (event.type === 'time_shift') {
+    const [minTimeShift, maxTimeShift] = rangeOption(
+      options,
+      'minTimeShift',
+      'maxTimeShift',
+      1 / STEPS_PER_SECOND,
+      1
+    );
+    const seconds = event.steps / STEPS_PER_SECOND;
+    return seconds >= minTimeShift && seconds <= maxTimeShift;
+  }
+  if (event.type === 'velocity') {
+    const [minVelocity, maxVelocity] = rangeOption(
+      options,
+      'minVelocity',
+      'maxVelocity',
+      MIN_VELOCITY,
+      MAX_VELOCITY
+    );
+    return event.velocity >= minVelocity && event.velocity <= maxVelocity;
+  }
+  return true;
+}
+
 function sampleFromLogits(logits, position, options) {
   const temperature = Math.max(0.05, options.temperature ?? DEFAULT_TEMPERATURE);
   const minTokens = options.minTokens ?? DEFAULT_MIN_TOKENS;
@@ -400,6 +450,7 @@ function sampleFromLogits(logits, position, options) {
   for (let token = 0; token < logits.length; token += 1) {
     if (token === PAD_ID || token === RESERVED_ID) continue;
     if (token === EOS_ID && position + 1 < minTokens) continue;
+    if (!tokenAllowedByOptions(token, options)) continue;
     const logit = logits[token];
     if (Number.isFinite(logit)) {
       candidates.push({ token, logit: logit / temperature });
