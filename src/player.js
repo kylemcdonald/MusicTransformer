@@ -16,6 +16,7 @@ export class MidiPlayer {
     this.timers = new Set();
     this.heldPianoNotes = new Set();
     this.activeSynthPitches = new Set();
+    this.pitchGenerations = new Map();
     this.playing = false;
     this.startedAt = 0;
     this.duration = 0;
@@ -87,6 +88,7 @@ export class MidiPlayer {
       this.synth.triggerRelease(pitchToFrequency(pitch));
     }
     this.activeSynthPitches.clear();
+    this.pitchGenerations.clear();
   }
 
   stop() {
@@ -150,11 +152,11 @@ export class MidiPlayer {
     const attackTimer = setTimeout(() => {
       this.timers.delete(attackTimer);
       if (!this.playing) return;
-      this.triggerAttack(note.pitch, velocity);
+      const generation = this.triggerAttack(note.pitch, velocity);
 
       const releaseTimer = setTimeout(() => {
         this.timers.delete(releaseTimer);
-        this.triggerRelease(note.pitch);
+        this.triggerRelease(note.pitch, generation);
       }, duration * 1000);
       this.timers.add(releaseTimer);
     }, attackDelay);
@@ -163,17 +165,35 @@ export class MidiPlayer {
   }
 
   triggerAttack(pitch, velocity) {
+    const generation = (this.pitchGenerations.get(pitch) || 0) + 1;
+    this.pitchGenerations.set(pitch, generation);
+    if (this.isPitchHeld(pitch)) {
+      this.releasePitch(pitch);
+    }
+
     if (this.instrumentType === 'piano' && this.piano?.loaded) {
       this.heldPianoNotes.add(pitch);
       this.piano.keyDown({ midi: pitch, velocity });
-      return;
+      return generation;
     }
 
     this.synth.triggerAttack(pitchToFrequency(pitch), undefined, velocity);
     this.activeSynthPitches.add(pitch);
+    return generation;
   }
 
-  triggerRelease(pitch) {
+  triggerRelease(pitch, generation = null) {
+    if (generation !== null && this.pitchGenerations.get(pitch) !== generation) return;
+    this.releasePitch(pitch);
+  }
+
+  isPitchHeld(pitch) {
+    return this.instrumentType === 'piano' && this.piano?.loaded
+      ? this.heldPianoNotes.has(pitch)
+      : this.activeSynthPitches.has(pitch);
+  }
+
+  releasePitch(pitch) {
     if (this.instrumentType === 'piano' && this.piano?.loaded) {
       if (this.heldPianoNotes.has(pitch)) {
         this.heldPianoNotes.delete(pitch);
