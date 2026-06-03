@@ -639,6 +639,11 @@ function keyboardEventTargetAllowsRecording(event) {
   return !['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(tagName);
 }
 
+function keyboardEventTargetAllowsAppShortcut(event) {
+  const tagName = event.target?.tagName;
+  return !event.target?.isContentEditable && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName);
+}
+
 function updateActiveKeyboardNoteEnds() {
   if (!activeKeyboardNotes.size) return false;
   const time = recordTime();
@@ -1362,8 +1367,14 @@ document.addEventListener('keydown', (event) => {
     return;
   }
 
-  const tagName = event.target?.tagName;
-  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) return;
+  if (!keyboardEventTargetAllowsAppShortcut(event)) return;
+
+  if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'a') {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) setSelection(pianoRoll.visibleNoteIds());
+    return;
+  }
 
   if ((event.key === 'Delete' || event.key === 'Backspace') && selectedNoteIds.size) {
     event.preventDefault();

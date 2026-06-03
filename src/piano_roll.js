@@ -57,6 +57,18 @@ export class PianoRoll {
     this.draw();
   }
 
+  visibleNoteIds() {
+    const viewEnd = this.viewStart + this.viewDuration;
+    return this.notes
+      .filter((note) => (
+        !note.ghost &&
+        !note.provisional &&
+        note.end >= this.viewStart &&
+        note.start <= viewEnd
+      ))
+      .map((note) => note.id);
+  }
+
   fitToContent() {
     this.autoFit = true;
     this.viewStart = 0;
